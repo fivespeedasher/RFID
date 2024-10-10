@@ -101,7 +101,6 @@ void Reader::receiveData() {
     }
     // 清空缓冲区
     memset(buffer.data(), 0, buffer.size());
-    // memset(tempBuffer.data(), 0, tempBuffer.size());
 }
 
 void Reader::GetFirmwareVersion(uint8_t btReadId) {
