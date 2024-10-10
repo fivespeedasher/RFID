@@ -178,7 +178,8 @@ void UploadTab::SaveDataToTable(string txtFilePath, string dbFilePath) {
                 fprintf(stderr, "SQL error: %s\n", zErrMsg);
                 sqlite3_free(zErrMsg);
             }else{
-                fprintf(stdout, "Table created successfully\n");
+                // fprintf(stdout);
+                fprintf(stdout, "Data insert successfully\n");
             }
         }
 

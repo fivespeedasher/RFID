@@ -9,9 +9,9 @@ public:
     UploadTab();
     ~UploadTab();
     std::vector<int> TwoBytesToInt(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> IntToTwoBytes(const std::vector<int>& data);
+    static std::vector<uint8_t> IntToTwoBytes(const std::vector<int>& data);
     void ClearHistoryData(bool isSQLIncluded, std::string dbFilePath);
     void SaveDataToTable(std::string txtFilePath, std::string dbFilePath);
-    std::vector<uint8_t> findEPC(int tagID, std::string dbFilePath);
+    static std::vector<uint8_t> findEPC(int tagID, std::string dbFilePath);
 };
 #endif // UPLOADTAB_H

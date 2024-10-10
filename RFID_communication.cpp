@@ -35,23 +35,24 @@ int main() {
 
     // 设定天线、启动盘存
     cout << "首次盘存" << endl;
-    uint8_t btRepeat = 0x02; // 0xFF: 持续轮询
+    uint8_t btRepeat = 0x01; // 0xFF: 持续轮询
     reader.InventoryReal(btReadId, antennas, btRepeat);
 
-    // // 盘存数据中的EPC数据存入数据库
-    // cout << "写入数据库" << endl;
-    // uploadTab.SaveDataToTable("Data/InventoryData.txt", "Data/EPC.db");
+    // 盘存数据中的EPC数据存入数据库
+    cout << "写入数据库" << endl;
+    uploadTab.SaveDataToTable("Data/InventoryData.txt", "Data/EPC.db");
 
-    // // 用标签号在数据库中查询EPC号
-    // int tagID = 2;
-    // int batch = 4;
-    // int weight = 400;
-    // cout << "修改标签" << endl;
-    // reader.WriteTag(btReadId, tagID, batch, weight, "Data/EPC.db", antennas);
+    // 用标签号在数据库中查询EPC号
+    int tagID = 2;
+    int batch = 3;
+    int weight = 500;
+    cout << "修改标签" << endl;
+    reader.WriteTag(btReadId, tagID, batch, weight, "Data/EPC.db", antennas);
 
-    // // 更新数据库
-    // cout << "第二次盘存" << endl;
-    // reader.InventoryReal(btReadId, antennas, btRepeat);
-    // uploadTab.SaveDataToTable("Data/InventoryData.txt", "Data/EPC.db");
-    // return 0;
+    // 更新数据库
+    cout << "第二次盘存" << endl;
+    // uploadTab.ClearHistoryData(false, "Data/InventoryData.db");
+    reader.InventoryReal(btReadId, antennas, btRepeat);
+    uploadTab.SaveDataToTable("Data/InventoryData.txt", "Data/EPC.db");
+    return 0;
 }
