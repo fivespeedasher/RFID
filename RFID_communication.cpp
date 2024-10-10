@@ -38,20 +38,20 @@ int main() {
     uint8_t btRepeat = 0x02; // 0xFF: 持续轮询
     reader.InventoryReal(btReadId, antennas, btRepeat);
 
-    // 盘存数据中的EPC数据存入数据库
-    cout << "写入数据库" << endl;
-    uploadTab.SaveDataToTable("Data/InventoryData.txt", "Data/EPC.db");
+    // // 盘存数据中的EPC数据存入数据库
+    // cout << "写入数据库" << endl;
+    // uploadTab.SaveDataToTable("Data/InventoryData.txt", "Data/EPC.db");
 
-    // 用标签号在数据库中查询EPC号
-    int tagID = 2;
-    int batch = 4;
-    int weight = 400;
-    cout << "修改标签" << endl;
-    reader.WriteTag(btReadId, tagID, batch, weight, "Data/EPC.db", antennas);
+    // // 用标签号在数据库中查询EPC号
+    // int tagID = 2;
+    // int batch = 4;
+    // int weight = 400;
+    // cout << "修改标签" << endl;
+    // reader.WriteTag(btReadId, tagID, batch, weight, "Data/EPC.db", antennas);
 
-    // 更新数据库
-    cout << "第二次盘存" << endl;
-    reader.InventoryReal(btReadId, antennas, btRepeat);
-    uploadTab.SaveDataToTable("Data/InventoryData.txt", "Data/EPC.db");
-    return 0;
+    // // 更新数据库
+    // cout << "第二次盘存" << endl;
+    // reader.InventoryReal(btReadId, antennas, btRepeat);
+    // uploadTab.SaveDataToTable("Data/InventoryData.txt", "Data/EPC.db");
+    // return 0;
 }
