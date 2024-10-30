@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/main.dir/RFID_communication.cpp.o -o main  Reader/libIncludeReader.a -lsqlite3 

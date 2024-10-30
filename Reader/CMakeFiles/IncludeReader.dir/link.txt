@@ -1,0 +1,2 @@
+/usr/bin/ar qc libIncludeReader.a CMakeFiles/IncludeReader.dir/MessageTran.cpp.o CMakeFiles/IncludeReader.dir/Reader.cpp.o CMakeFiles/IncludeReader.dir/UploadTab.cpp.o
+/usr/bin/ranlib libIncludeReader.a

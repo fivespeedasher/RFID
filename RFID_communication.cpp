@@ -45,7 +45,7 @@ int main() {
     // 用标签号在数据库中查询EPC号
     int tagID = 2;
     int batch = 3;
-    int weight = 500;
+    int weight = 505;
     cout << "修改标签" << endl;
     reader.WriteTag(btReadId, tagID, batch, weight, "Data/EPC.db", antennas);
 
