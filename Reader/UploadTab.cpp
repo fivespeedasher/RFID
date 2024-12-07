@@ -116,7 +116,7 @@ void UploadTab::SaveDataToTable(string txtFilePath, string dbFilePath) {
     }
 
     /* 创建Table */
-    sql = "CREATE TABLE BatchTag("  \
+    sql = "CREATE TABLE IF NOT EXISTS BatchTag("  \
             "TagID      INT     PRIMARY KEY NOT NULL," \
             "Batch      INT     NOT NULL," \
             "Weight     INT," \

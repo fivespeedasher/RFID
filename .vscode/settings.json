@@ -62,6 +62,7 @@
         "map": "cpp",
         "mutex": "cpp",
         "variant": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "unordered_set": "cpp"
     }
 }
