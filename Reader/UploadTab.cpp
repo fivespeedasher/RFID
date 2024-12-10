@@ -14,12 +14,11 @@
 #include <sstream>
 #include <stdlib.h>
 #include <string>
-#include <sqlite3.h> 
 #include <iterator>
 
 using namespace std;
 // TODO 数据库create、执行等操作分离成单个函数
-UploadTab::UploadTab() {}
+UploadTab::UploadTab(string dbFilePath) : dbFilePath(dbFilePath) {initDB();}
 UploadTab::~UploadTab() {}
 
 static int callback(void* data, int argc, char **argv, char **azColName){
@@ -34,7 +33,7 @@ static int callback(void* data, int argc, char **argv, char **azColName){
  * @param isSQLIncluded true 清空txt文件与数据库; false 仅清空txt文件
  * @param dbFilePath db文件路径
  */
-void UploadTab::ClearHistoryData(bool isSQLIncluded, string dbFilePath="") {
+void UploadTab::ClearHistoryData(bool isSQLIncluded) {
     // 将txt文件清空
     ofstream outFile("Data/InventoryData.txt", ios::trunc);
     if (!outFile) {
@@ -93,21 +92,11 @@ vector<uint8_t> UploadTab::IntToTwoBytes(const vector<int>& data) {
     return result;
 }
 
-
-/**
- * @brief 将txt文件中的EPC数据存入数据库
- * 
- * @param txtFilePath
- */
-void UploadTab::SaveDataToTable(string txtFilePath, string dbFilePath) {
-    /*数据库初始化*/
-    sqlite3 *db;
-    char *zErrMsg = 0;
-    int  rc;
-    string sql;
+int UploadTab::initDB() {
+    this->zErrMsg = 0; // 错误信息
 
     /* 打开数据库 */
-    rc = sqlite3_open(dbFilePath.c_str(), &db);
+    rc = sqlite3_open(dbFilePath.c_str(), &this->db);
     if( rc ){
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         exit(0);
@@ -116,7 +105,7 @@ void UploadTab::SaveDataToTable(string txtFilePath, string dbFilePath) {
     }
 
     /* 创建Table */
-    sql = "CREATE TABLE IF NOT EXISTS BatchTag("  \
+    this->sql = "CREATE TABLE IF NOT EXISTS BatchTag("  \
             "TagID      INT     PRIMARY KEY NOT NULL," \
             "Batch      INT     NOT NULL," \
             "Weight     INT," \
@@ -129,6 +118,23 @@ void UploadTab::SaveDataToTable(string txtFilePath, string dbFilePath) {
         sqlite3_free(zErrMsg);
     }else{
         fprintf(stdout, "Table created successfully\n");
+    }
+    return 0;
+}
+
+/**
+ * @brief 将txt文件中的EPC数据存入数据库
+ * 
+ * @param txtFilePath
+ */
+void UploadTab::SaveDataToTable(string txtFilePath) {
+    /* 打开数据库 */
+    this->rc = sqlite3_open(dbFilePath.c_str(), &db);
+    if( this->rc ){
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        exit(0);
+    }else{
+        fprintf(stdout, "Opened database successfully\n");
     }
 
     /* 打开EPC数据存放的TXT文件 */
@@ -173,8 +179,8 @@ void UploadTab::SaveDataToTable(string txtFilePath, string dbFilePath) {
                 "VALUES " + data_str + ";";
 
             // execute SQL命令
-            rc = sqlite3_exec(db, sql.c_str(), callback, 0, &zErrMsg);
-            if( rc != SQLITE_OK ){
+            this->rc = sqlite3_exec(this->db, sql.c_str(), callback, 0, &zErrMsg);
+            if( this->rc != SQLITE_OK ){
                 fprintf(stderr, "SQL error: %s\n", zErrMsg);
                 sqlite3_free(zErrMsg);
             }else{
@@ -187,16 +193,10 @@ void UploadTab::SaveDataToTable(string txtFilePath, string dbFilePath) {
     inFile.close();
 }
 
-vector<uint8_t> UploadTab::findEPC(int tagID, string dbFilePath) {
-    // 数据库初始化
-    sqlite3 *db;
-    char *zErrMsg = 0;
-    int  rc;
-    string sql;
-
+vector<uint8_t> UploadTab::findEPC(int tagID) {
     // 打开数据库
-    rc = sqlite3_open(dbFilePath.c_str(), &db);
-    if( rc ){
+    this->rc = sqlite3_open(dbFilePath.c_str(), &this->db);
+    if( this->rc ){
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         exit(0);
     }else{
@@ -207,8 +207,8 @@ vector<uint8_t> UploadTab::findEPC(int tagID, string dbFilePath) {
     // 查找TagID的对应的EPC号
     sql = "SELECT EPC FROM BatchTag WHERE TagID = " + to_string(tagID) + ";";
     string EPC_str;
-    rc = sqlite3_exec(db, sql.c_str(), callback, &EPC_str, &zErrMsg);
-    if( rc != SQLITE_OK ){
+    this->rc = sqlite3_exec(this->db, sql.c_str(), callback, &EPC_str, &zErrMsg);
+    if( this->rc != SQLITE_OK ){
         fprintf(stderr, "SQL error: %s\n", zErrMsg);
         sqlite3_free(zErrMsg);
     }else{
@@ -219,3 +219,37 @@ vector<uint8_t> UploadTab::findEPC(int tagID, string dbFilePath) {
     vector<uint8_t> EPC = string_split(EPC_str, ' ');
     return EPC;
 }
+
+// // TODO 提取单个，而不是vector
+// // 通过Tag获取表格中的数据
+// vector<int> UploadTab::getBatch(int tagID) {
+//     // 打开数据库
+//     this->rc = sqlite3_open(dbFilePath.c_str(), &this->db);
+//     if( this->rc ){
+//         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+//         exit(0);
+//     }else{
+//         fprintf(stdout, "Opened database successfully\n");
+//     }
+
+//     // 查询EPC
+//     // 查找TagID的对应的EPC号
+//     sql = "SELECT Batch FROM BatchTag WHERE TagID = " + to_string(tagID) + ";";
+//     string data_str;
+//     this->rc = sqlite3_exec(db, sql.c_str(), callback, &data_str, &zErrMsg);
+//     if( this->rc != SQLITE_OK ){
+//         fprintf(stderr, "SQL error: %s\n", zErrMsg);
+//         sqlite3_free(zErrMsg);
+//     }else{
+//         fprintf(stdout, "Data access successfully\n");
+//     }
+    
+//     // 将string转为vector<uint8_t>, 以空格分隔
+//     vector<uint8_t> data = string_split(data_str, ' ');
+//     vector<int> result;
+//     for (int i = 0; i < data.size(); i++) {
+//         result.push_back(data[i]);
+//     }
+    
+//     return result;
+// }

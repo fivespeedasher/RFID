@@ -9,6 +9,7 @@
 #include "Reader/Reader.h"
 #include "Reader/MessageTran.h"
 #include "Reader/UploadTab.h"
+#include "Reader/RFIDconstant.h"
 
 using namespace std;
 
@@ -22,46 +23,39 @@ int main() {
         return -1;
     }
 
-    UploadTab uploadTab;
-    // 清空历史接收数据
-    uploadTab.ClearHistoryData(false, "Data/InventoryData.db");
+    UploadTab uploadTab(dbFilePath);
+    // // 清空历史接收数据
+    // uploadTab.ClearHistoryData(false);
 
-    uint8_t btReadId = 0x00; // 读写器ID, 公用地址0xFF，广播形式
-    reader.GetFirmwareVersion(btReadId);
+    // // 读取固件版本
+    // reader.GetFirmwareVersion(btReadId);
 
-    // XXX 自动识别天线 cmd_get_ant_physical_connection_status cmd:0x53 -> 舍弃
-
-    vector<uint8_t> antennas = {0x01, 0x02, 0x03}; // 4个天线:00~03
-
-    // 设定天线、启动盘存
-    cout << "首次盘存" << endl;
-    uint8_t btRepeat = 0x01; // 0xFF: 持续轮询
+    // 盘存，写入txt文件
     reader.InventoryReal(btReadId, antennas, btRepeat);
 
-    // 盘存数据中的EPC数据存入数据库
-    cout << "写入数据库" << endl;
-    uploadTab.SaveDataToTable("Data/InventoryData.txt", "Data/EPC.db");
-
-    // 查看标签信息
-
+    // // // 盘存数据中的EPC数据存入数据库
+    // uploadTab.SaveDataToTable(txtFilePath, dbFilePath);
 
     // 用标签号在数据库中查询EPC号
     int tagID = 2;
+    vector<uint8_t> origin_EPC  = uploadTab.findEPC(tagID);
+
+    // vector<int> tag_info;
+    // tag_info = uploadTab.findData(tagID);
+    // cout << tag_info[1] << endl;
+    // 更新批次、重量信息
     int batch;
     int weight;
-    vector<uint8_t> EPC2_info = uploadTab.findEPC(tagID, "Data/EPC.db"); // 
-    // 更新批次、重量信息
     batch = 3;
-    weight = 10;
+    weight = 11;
 
-    // 修改EPC信息
-    cout << "修改标签" << endl;
-    reader.WriteTag(btReadId, tagID, batch, weight, "Data/EPC.db", antennas);
+    // // 修改EPC信息
+    // cout << "修改标签" << endl;
+    reader.WriteTag(btReadId, tagID, batch, weight, dbFilePath, antennas, origin_EPC);
 
-    // 更新数据库
-    cout << "第二次盘存" << endl;
-    // uploadTab.ClearHistoryData(false, "Data/InventoryData.db");
+    // // 更新数据库
     reader.InventoryReal(btReadId, antennas, btRepeat);
-    uploadTab.SaveDataToTable("Data/InventoryData.txt", "Data/EPC.db");
+    uploadTab.SaveDataToTable(txtFilePath);
+
     return 0;
 }

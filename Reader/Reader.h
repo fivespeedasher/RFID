@@ -28,7 +28,7 @@ public:
     void CancelAccessEpcMatch(uint8_t btReadId, vector<uint8_t> btAryEPC);
     void WriteEPC(uint8_t btReadId, vector<uint8_t> btAryEPC, vector<uint8_t> btAryPassWord, \
             uint8_t btWordAdd, uint8_t btWordCnt, vector<uint8_t> btArySetData, const vector<uint8_t>& antennas);
-    void WriteTag(uint8_t btReadId, int tagID, int batch, int weight, string dbFilePath, const vector<uint8_t>& antennas);
+    int WriteTag(uint8_t btReadId, int tagID, int batch, int weight, string dbFilePath, const vector<uint8_t>& antennas, const vector<uint8_t>& origin_EPC);
     
 private:
     // void receiveDataThread(function<void(const vector<uint8_t>&)> callback);
@@ -37,5 +37,6 @@ private:
     int sock;
     // 设置非阻塞读数据
     void setBlocking(int sock, bool isBlocking);
+    vector<uint8_t> IntToTwoBytes(const vector<int>& data);
 };
 #endif

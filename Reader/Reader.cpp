@@ -1,6 +1,5 @@
 #include "Reader.h"
 #include "MessageTran.h"
-#include "UploadTab.h"
 #include <fstream>
 
 using namespace std;
@@ -23,6 +22,9 @@ bool Reader::connectToServer() {
         return false;
     }
 
+    // 设置非阻塞模式
+    setBlocking(sock, false);
+
     // 设置服务器地址
     sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
@@ -33,14 +35,44 @@ bool Reader::connectToServer() {
     }
 
     // 连接到服务器
-    if (connect(sock, (sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
-        cerr << "Connection failed" << endl;
+    int result = connect(sock, (sockaddr*)&serverAddress, sizeof(serverAddress));
+    if (result == 0) {
+        // 非阻塞模式下，立即返回成功
+        cout << "Successfully connected to server" << endl;
+        return true;
+    } else if (errno != EINPROGRESS) {
+        // 如果不是正在连接的错误，表示连接失败
+        cerr << "Connection failed immediately: " << strerror(errno) << endl;
         close(sock);
         return false;
     }
+
+    // 使用 select 等待连接完成
+    fd_set writefds;
+    struct timeval tv;
+    tv.tv_sec = 2;  // 超时时间 2 秒
+    tv.tv_usec = 0;
+
+    FD_ZERO(&writefds);
+    FD_SET(sock, &writefds);
+
+    result = select(sock + 1, NULL, &writefds, NULL, &tv);
+    if (result <= 0) {
+        cerr << (result == 0 ? "Connection timeout " : "Select error: ") << strerror(errno) << endl;
+        close(sock);
+        return false;
+    }
+
+    // 使用 getsockopt 检查是否发生连接错误
+    int sockErr;
+    socklen_t len = sizeof(sockErr);
+    if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &sockErr, &len) < 0 || sockErr != 0) {
+        cerr << "Connection error: " << strerror(sockErr) << endl;
+        close(sock);
+        return false;
+    }
+
     cout << "Successfully connected to server" << endl;
-    
-    
     return true;
 }
 
@@ -65,7 +97,6 @@ void Reader::setBlocking(int sock, bool isBlocking) {
 void Reader::receiveData() {
     vector<uint8_t> buffer(0);
     int nRead = 0;
-    setBlocking(sock, false);
     // 用延时和非阻塞读取数据
     cout << "接收数据中...";
     while (true) {
@@ -191,17 +222,149 @@ void Reader::WriteEPC(uint8_t btReadId, vector<uint8_t> btAryEPC, vector<uint8_t
     CancelAccessEpcMatch(btReadId, btAryEPC);
 }
 
-void Reader::WriteTag(uint8_t btReadId, int tagID, int batch, int weight, string dbFilePath, const vector<uint8_t>& antennas) {
-    // 取得原EPC号
-    vector<uint8_t> origin_EPC  = UploadTab::findEPC(tagID, dbFilePath);
-    
+
+/**
+ * @brief 将int数组转为两位十六进制字节
+ * 
+ * @param data 
+ * @return vetor<uint8_t> 
+ */
+vector<uint8_t> Reader::IntToTwoBytes(const vector<int>& data) {
+    vector<uint8_t> result;
+    for (int i = 0; i < data.size(); i++) {
+        result.push_back((data[i] >> 8) & 0xFF);
+        result.push_back(data[i] & 0xFF);
+    }
+    return result;
+}
+
+// 将新设置的batch、weight写入标签
+int Reader::WriteTag(uint8_t btReadId, int tagID, int batch, int weight, string dbFilePath, const vector<uint8_t>& antennas, const vector<uint8_t>& origin_EPC) {
     // 设置新EPC号
     vector<int> data = {tagID, batch, weight};
-    vector<uint8_t> new_EPC = UploadTab::IntToTwoBytes(data);
+    vector<uint8_t> new_EPC = Reader::IntToTwoBytes(data);
     
     // 组合报文
     vector<uint8_t> btAryPassWord = {0x00, 0x00, 0x00, 0x00};
     uint8_t btWordAdd = 0x02; // EPC区起始地址
     uint8_t btWordCnt = origin_EPC.size() / 2; // EPC区长度
-    WriteEPC(btReadId, origin_EPC, btAryPassWord, btWordAdd, btWordCnt, new_EPC, antennas);
+    if(btWordCnt != data.size()) {
+        cerr << "(WriteTag) Error EPC" <<endl;
+        return -1;
+    }
+    else {
+        WriteEPC(btReadId, origin_EPC, btAryPassWord, btWordAdd, btWordCnt, new_EPC, antennas);
+        return 0;
+    }
 }
+
+class Talker {
+public:
+    Talker() : clientSocket(-1), isRunning(false) {}
+
+    ~Talker() {
+        stop();
+    }
+    // 连接到本地服务器
+    bool connectToServer(const string& ipAddress, int port) {
+        clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+        if (clientSocket < 0) {
+            cerr << "Error: Failed to create socket" << endl;
+            return false;
+        }
+
+        // 将字符串形式的IP地址和端口号转换为 sockaddr_in 结构体，因为 connect 函数的第二个参数需要 sockaddr_in 结构体
+        sockaddr_in serverAddress{};    
+        serverAddress.sin_family = AF_INET;
+        serverAddress.sin_port = htons(port);
+        if (inet_pton(AF_INET, ipAddress.c_str(), &serverAddress.sin_addr) <= 0) {
+            cerr << "Error: Invalid IP address" << endl;
+            return false;
+        }
+
+        // conncet参数：套接字描述符，指向包含目的端地址的结构体指针，结构体长度
+        // ::connect中的::表示全局作用域，表示调用的是全局的connect函数
+        if (connect(clientSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
+            cerr << "Error: Failed to connect to server" << endl;
+            return false;
+        }
+        // 开启接收数据的线程
+        isRunning = true;
+        receiveThread = thread(&Talker::receiveData, this);
+
+        cout << "Connected to server at " << ipAddress << ":" << port << endl;
+        return true;
+    }
+
+    // 发送数据
+    bool sendData(const string& message) {
+        if (clientSocket < 0) {
+            cerr << "Error: No connection established" << endl;
+            return false;
+        }
+
+        ssize_t bytesSent = send(clientSocket, message.c_str(), message.size(), 0);
+        if (bytesSent != static_cast<ssize_t>(message.size())) { // 发送的字节数不等于消息长度
+            cerr << "Error: Failed to send all data" << endl;
+            return false;
+        }
+
+        cout << "Sent: " << message << endl;
+        return true;
+    }
+
+    // 停止客户端
+    void stop() {
+        // 加入资源清理逻辑，确保线程和 socket 都能正常关闭
+        if (isRunning) {
+            isRunning = false;
+
+            if (clientSocket >= 0) {
+                close(clientSocket);
+                clientSocket = -1;
+            }
+
+            if (receiveThread.joinable()) {
+                receiveThread.join();
+            }
+        }
+    }
+private:
+    int clientSocket;
+    bool isRunning;
+    thread receiveThread;   // 接收数据的线程
+    mutex streamMutex; // 互斥锁
+
+    // 接收数据线程
+    void receiveData() {
+        /*
+         * 功能：
+         *  - 独立线程阻塞式监听服务器发送的数据
+         *  - 将接收到的消息打印到控制台
+         * 改动原因：
+         *  - 通过线程将读取数据的逻辑从主线程分离，提高客户端的扩展性。
+         */
+        try {
+            const size_t bufferSize = 1024;          // 定义缓冲区大小
+            vector<char> buffer(bufferSize);   // 接收数据的缓冲区
+
+            while (isRunning) {                     // 持续接收数据
+                ssize_t bytesRead = recv(clientSocket, buffer.data(), bufferSize, 0);
+                if (bytesRead > 0) {                // 成功接收数据
+                    lock_guard<mutex> lock(streamMutex);
+                    string receivedMessage(buffer.data(), bytesRead);
+                    cout << "Received: " << receivedMessage << endl;
+                } else if (bytesRead == 0) {        // 服务器关闭连接
+                    cout << "Server disconnected." << endl;
+                    break;
+                } else {                            // 读取数据时发生错误
+                    cerr << "Error: Failed to read data" << endl;
+                    break;
+                }
+            }
+        } catch (...) {                             // 捕获并忽略接收线程中的异常
+            cerr << "Error: Exception in receive thread." << endl;
+        }
+        isRunning = false;                          // 确保标志状态被更新
+    }
+};
