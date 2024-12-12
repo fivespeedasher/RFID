@@ -10,6 +10,8 @@
 #include <string>
 #include <fcntl.h>
 #include <cstring>
+#include <mutex>
+
 using namespace std;
 // TODO 网口通讯用fcntl select
 class Reader {
@@ -18,7 +20,6 @@ public:
     ~Reader();
     bool connectToServer();
     bool sendMessage(const vector<uint8_t>& message);
-    void receiveData();
     void GetFirmwareVersion(uint8_t btReadId);
     // 设置指定天线为工作天线
     void SetWorkAntenna(uint8_t btReadId, uint8_t antennas);
@@ -29,14 +30,17 @@ public:
     void WriteEPC(uint8_t btReadId, vector<uint8_t> btAryEPC, vector<uint8_t> btAryPassWord, \
             uint8_t btWordAdd, uint8_t btWordCnt, vector<uint8_t> btArySetData, const vector<uint8_t>& antennas);
     int WriteTag(uint8_t btReadId, int tagID, int batch, int weight, string dbFilePath, const vector<uint8_t>& antennas, const vector<uint8_t>& origin_EPC);
-    
+    void stop();
+    bool isRunning;
 private:
+    void receiveData();
     // void receiveDataThread(function<void(const vector<uint8_t>&)> callback);
     string ipAddress;
     int port;
     int sock;
-    // 设置非阻塞读数据
-    void setBlocking(int sock, bool isBlocking);
+    thread receiveThread;   // 接收数据的线程
+    mutex streamMutex; // 互斥锁
     vector<uint8_t> IntToTwoBytes(const vector<int>& data);
+    string txtFile;
 };
 #endif
