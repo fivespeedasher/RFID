@@ -10,7 +10,6 @@ Reader::Reader(const string& ipAddress, int port) : ipAddress(ipAddress), port(p
 Reader::~Reader() {
     stop();
 }
-
 bool Reader::connectToServer() {
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
@@ -42,6 +41,7 @@ bool Reader::connectToServer() {
 
 // 发数据
 bool Reader::sendMessage(const vector<uint8_t>& message) {
+    this_thread::sleep_for(chrono::milliseconds(500)); // 速率控制，将线程挂起0.5s
     if (sock < 0) {
         cerr << "Error: No connection established" << endl;
         return false;
@@ -82,7 +82,7 @@ void Reader::receiveData() {
         return;
     }
     try {
-        const size_t bufferSize = 1024;          // 定义缓冲区大小
+        const size_t bufferSize = 2048;          // 定义缓冲区大小
         vector<uint8_t> buffer(bufferSize);   // 接收数据的缓冲区
 
         while (this->isRunning) {                     // 持续接收数据
@@ -117,7 +117,6 @@ void Reader::receiveData() {
     }
     this->isRunning = false;                          // 确保标志状态被更新
     outFile.close();
-    // memset(buffer.data(), 0, buffer.size());
 }
 
 void Reader::GetFirmwareVersion(uint8_t btReadId) {

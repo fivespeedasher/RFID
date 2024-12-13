@@ -56,13 +56,13 @@ public:
             cerr << "Error: No connection established" << endl;
             return false;
         }
-
+        this_thread::sleep_for(chrono::milliseconds(500)); // 增加速率控制
         ssize_t bytesSent = send(clientSocket, message.c_str(), message.size(), 0);
         if (bytesSent != static_cast<ssize_t>(message.size())) { // 发送的字节数不等于消息长度
             cerr << "Error: Failed to send all data" << endl;
             return false;
         }
-
+        
         cout << "Sent: " << message << endl;
         return true;
     }
@@ -146,14 +146,21 @@ int main() {
 
     string message;
     cout << "Enter a message to send (type 'exit' to quit): ";
-    while (getline(cin, message)) {
+    // while (getline(cin, message)) {
+    int round = 20000;
+    while (round--) {
+        // sleep(0.5);
+        message = "Abcdefghijklmnopqrstuvwxyz";
         if (message == "exit") {
             break;
         }
 
         client.sendData(message);
-        cout << "Enter a message to send (type 'exit' to quit): ";
+        // cout << "Enter a message to send (type 'exit' to quit): ";
     }
+    
+    // 等待数据接收完成
+    sleep(1);
     
     client.stop();
     return 0;

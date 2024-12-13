@@ -13,7 +13,6 @@
 #include <mutex>
 
 using namespace std;
-// TODO 网口通讯用fcntl select
 class Reader {
 public:
     Reader(const string& ipAddress, int port);

@@ -56,8 +56,6 @@ int main() {
     // // 更新数据库
     reader.InventoryReal(btReadId, antennas, btRepeat);
     // uploadTab.SaveDataToTable(txtFilePath);
-    sleep(2);
-    reader.stop();
 
     return 0;
 }
