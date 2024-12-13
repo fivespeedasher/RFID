@@ -74,9 +74,8 @@ void Reader::stop() {
 
 // 收数据
 void Reader::receiveData() {
-    // vector<uint8_t> buffer(0);
     // 处理接收到的数据, 并写入txt文件
-    ofstream outFile(txtFile, ios::out | ios::app | ios::binary);
+    ofstream outFile(txtFile, ios::out | ios::app | ios::binary); // 存储划分好的数据
     if (!outFile) {
         cerr << "无法打开文件" << endl;
         return;
@@ -86,21 +85,37 @@ void Reader::receiveData() {
         vector<uint8_t> buffer(bufferSize);   // 接收数据的缓冲区
 
         while (this->isRunning) {                     // 持续接收数据
-            ssize_t bytesRead = recv(sock, buffer.data(), buffer.size(), 0);
+            size_t bytesRead = recv(sock, buffer.data(), buffer.size(), 0);
             if (bytesRead > 0) {                // 成功接收数据
                 lock_guard<mutex> lock(streamMutex);
-                // buffer.insert(buffer.end(), tempBuffer.begin(), tempBuffer.begin() + bytesRead);
-                // 接收到的数据写入文件
-                for (size_t i = 0; i < bytesRead; ++i) {
-                    outFile << hex << (int)buffer[i] << " ";
-                }
 
-                outFile.flush(); // 确保数据立即写入文件
                 cout << "Received: ";
                 for (size_t i = 0; i < bytesRead; ++i) {
                     cout << hex << (int)buffer[i] << " ";
                 }
+
+                // 将数据整理后存入txt文件
+                int p = 0;
+                size_t currentSize = bytesRead;
+                while (currentSize > 0) {
+                    if ((int)buffer[p] == 160 && currentSize > 2) {
+                        int length_p = (int)buffer[p + 1] + 2; // 数据帧长度
+                        while(length_p--) {
+                            outFile << hex << (int)buffer[p] << " ";
+                            p++;
+                            currentSize--;
+                        }
+                    } else {
+                        outFile << hex << (int)buffer[p] << " ";
+                        p++;
+                        currentSize--;
+                    }
+                    outFile << endl;
+                }
+
+                outFile.flush(); // 确保数据立即写入文件
                 cout << endl;
+
                 // 清空buffer
                 buffer.clear();
                 buffer.resize(bufferSize);

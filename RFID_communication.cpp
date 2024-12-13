@@ -1,10 +1,10 @@
 #include <iostream>
-#include <cstring>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+#include <string>
+// #include <sys/socket.h>
+// #include <arpa/inet.h>
+// #include <unistd.h> //
 #include <vector>
-#include <thread>
+// #include <thread>
 #include <functional>
 #include "Reader/Reader.h"
 #include "Reader/MessageTran.h"
@@ -23,9 +23,9 @@ int main() {
         return -1;
     }
 
-    // UploadTab uploadTab(dbFilePath);
-    // // 清空历史接收数据
-    // uploadTab.ClearHistoryData(false);
+    UploadTab uploadTab(dbFilePath);
+    // 清空历史接收数据
+    uploadTab.ClearHistoryData(false);
 
     // 读取固件版本
     reader.GetFirmwareVersion(btReadId);
@@ -33,12 +33,12 @@ int main() {
     // 盘存，写入txt文件
     reader.InventoryReal(btReadId, antennas, btRepeat);
 
-    // // // 盘存数据中的EPC数据存入数据库
-    // uploadTab.SaveDataToTable(txtFilePath, dbFilePath);
+    // 盘存数据中的EPC数据存入数据库
+    uploadTab.SaveDataToTable(txtFilePath);
 
     // 用标签号在数据库中查询EPC号
     int tagID = 2;
-    // vector<uint8_t> origin_EPC  = uploadTab.findEPC(tagID);
+    vector<uint8_t> origin_EPC  = uploadTab.findEPC(tagID);
 
     // vector<int> tag_info;
     // tag_info = uploadTab.findData(tagID);
@@ -47,15 +47,15 @@ int main() {
     int batch;
     int weight;
     batch = 3;
-    weight = 11;
+    weight = 100;
 
-    // // 修改EPC信息
-    // cout << "修改标签" << endl;
-    // reader.WriteTag(btReadId, tagID, batch, weight, dbFilePath, antennas, origin_EPC);
+    // 修改EPC信息
+    cout << "修改标签" << endl;
+    reader.WriteTag(btReadId, tagID, batch, weight, dbFilePath, antennas, origin_EPC);
 
     // // 更新数据库
     reader.InventoryReal(btReadId, antennas, btRepeat);
-    // uploadTab.SaveDataToTable(txtFilePath);
+    uploadTab.SaveDataToTable(txtFilePath);
 
     return 0;
 }
